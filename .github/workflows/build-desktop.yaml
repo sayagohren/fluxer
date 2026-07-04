@@ -378,7 +378,26 @@ jobs:
         run: >-
           cargo run --locked --quiet --manifest-path ${{ github.workspace }}/_ci/tools/ci/Cargo.toml -- build-desktop
           --step create_portable_zip_windows
+       - name: Create portable ZIP (Windows)
+        if: matrix.platform == 'windows'
+        working-directory: ${{ env.WORKDIR }}/fluxer_desktop
+        env:
+          BUILD_CHANNEL: ${{ env.BUILD_CHANNEL }}
+        run: >-
+          cargo run --locked --quiet --manifest-path ${{ github.workspace }}/_ci/tools/ci/Cargo.toml -- build-desktop
+          --step create_portable_zip_windows
 
+      # === ДОБАВЬТЕ ЭТОТ БЛОК ===
+       - name: Upload Windows Artifacts to GitHub
+         if: matrix.platform == 'windows'
+         uses: actions/upload-artifact@v4
+         with:
+           name: fluxer-windows-${{ matrix.arch }}-${{ matrix.desktop_variant }}
+           path: |
+             ${{ env.WORKDIR }}/fluxer_desktop/dist/*.exe
+             ${{ env.WORKDIR }}/fluxer_desktop/dist/*.zip
+             ${{ env.WORKDIR }}/fluxer_desktop/dist/*.nupkg
+      # ==========================
       - name: Prepare artifacts (Windows)
         if: runner.os == 'Windows'
         run: >-
