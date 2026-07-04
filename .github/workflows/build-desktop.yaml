@@ -1,4 +1,4 @@
- name: build desktop
+name: build desktop
 
 on:
   workflow_dispatch:
@@ -19,12 +19,12 @@ on:
       build_version:
         description: 'Explicit CalVer version (leave empty for auto)'
         required: false
-        default: ""
+        default: ''
         type: string
       skip_targets:
         description: 'Targets to skip (comma-separated)'
         required: false
-        default: "macos-arm64, macos-x64, linux-x64, linux-arm64"
+        default: 'macos-arm64, macos-x64, linux-x64, linux-arm64'
         type: string
 
 permissions:
@@ -33,13 +33,13 @@ permissions:
   actions: read
 
 concurrency:
-  group: desktop-${{ inputs.channel }}-${{ inputs.test_build && 'test' || 'release' }}
+  group: "desktop-${{ inputs.channel }}-${{ inputs.test_build && 'test' || 'release' }}"
   cancel-in-progress: true
 
 env:
-  CHANNEL: ${{ inputs.channel }}
-  BUILD_CHANNEL: ${{ inputs.channel == 'canary' && 'canary' || 'stable' }}
-  TEST_BUILD: ${{ inputs.test_build && 'true' || 'false' }}
+  CHANNEL: "${{ inputs.channel }}"
+  BUILD_CHANNEL: "${{ inputs.channel == 'canary' && 'canary' || 'stable' }}"
+  TEST_BUILD: "${{ inputs.test_build && 'true' || 'false' }}"
 
 jobs:
   meta:
@@ -115,29 +115,29 @@ jobs:
       fail-fast: false
       matrix: ${{ fromJson(needs.matrix.outputs.matrix) }}
     env:
-      CHANNEL: ${{ needs.meta.outputs.channel }}
-      BUILD_CHANNEL: ${{ needs.meta.outputs.build_channel }}
-      RELEASE_CHANNEL: ${{ needs.meta.outputs.build_channel }}
-      PUBLIC_RELEASE_CHANNEL: ${{ needs.meta.outputs.build_channel }}
-      VERSION: ${{ needs.meta.outputs.version }}
-      BUILD_VERSION: ${{ needs.meta.outputs.version }}
-      PUBLIC_BUILD_VERSION: ${{ needs.meta.outputs.version }}
-      PUB_DATE: ${{ needs.meta.outputs.pub_date }}
-      SOURCE_SHA: ${{ needs.meta.outputs.source_sha }}
-      S3_DESKTOP_PREFIX: ${{ needs.meta.outputs.s3_prefix }}
-      DESKTOP_HANDOFF_PREFIX: _handoff/desktop/${{ needs.meta.outputs.build_channel }}/${{ needs.meta.outputs.version }}/${{ needs.meta.outputs.source_sha }}
+      CHANNEL: "${{ needs.meta.outputs.channel }}"
+      BUILD_CHANNEL: "${{ needs.meta.outputs.build_channel }}"
+      RELEASE_CHANNEL: "${{ needs.meta.outputs.build_channel }}"
+      PUBLIC_RELEASE_CHANNEL: "${{ needs.meta.outputs.build_channel }}"
+      VERSION: "${{ needs.meta.outputs.version }}"
+      BUILD_VERSION: "${{ needs.meta.outputs.version }}"
+      PUBLIC_BUILD_VERSION: "${{ needs.meta.outputs.version }}"
+      PUB_DATE: "${{ needs.meta.outputs.pub_date }}"
+      SOURCE_SHA: "${{ needs.meta.outputs.source_sha }}"
+      S3_DESKTOP_PREFIX: "${{ needs.meta.outputs.s3_prefix }}"
+      DESKTOP_HANDOFF_PREFIX: "_handoff/desktop/${{ needs.meta.outputs.build_channel }}/${{ needs.meta.outputs.version }}/${{ needs.meta.outputs.source_sha }}"
       S3_ENDPOINT: https://ewr1.vultrobjects.com
       S3_BUCKET: fluxer-downloads
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID || 'dummy' }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY || 'dummy' }}
-      DESKTOP_PLATFORM: ${{ matrix.platform }}
-      DESKTOP_ARCH: ${{ matrix.arch }}
-      DESKTOP_VARIANT: ${{ matrix.desktop_variant }}
-      FLUXER_DESKTOP_BUILD_VARIANT: ${{ matrix.desktop_variant }}
-      PLATFORM: ${{ matrix.platform }}
-      ARCH: ${{ matrix.arch }}
-      ELECTRON_ARCH: ${{ matrix.electron_arch }}
-      FLUXER_WINDOWS_GAME_CAPTURE_MODULE_ENABLED: ${{ matrix.desktop_variant == 'windows-game-capture' && 'true' || 'false' }}
+      AWS_ACCESS_KEY_ID: "${{ secrets.AWS_ACCESS_KEY_ID || 'dummy' }}"
+      AWS_SECRET_ACCESS_KEY: "${{ secrets.AWS_SECRET_ACCESS_KEY || 'dummy' }}"
+      DESKTOP_PLATFORM: "${{ matrix.platform }}"
+      DESKTOP_ARCH: "${{ matrix.arch }}"
+      DESKTOP_VARIANT: "${{ matrix.desktop_variant }}"
+      FLUXER_DESKTOP_BUILD_VARIANT: "${{ matrix.desktop_variant }}"
+      PLATFORM: "${{ matrix.platform }}"
+      ARCH: "${{ matrix.arch }}"
+      ELECTRON_ARCH: "${{ matrix.electron_arch }}"
+      FLUXER_WINDOWS_GAME_CAPTURE_MODULE_ENABLED: "${{ matrix.desktop_variant == 'windows-game-capture' && 'true' || 'false' }}"
     steps:
       - name: Checkout CI helpers
         uses: actions/checkout@v4
@@ -174,12 +174,12 @@ jobs:
           cargo run --locked --quiet --manifest-path ${{ github.workspace }}/_ci/tools/ci/Cargo.toml -- build-desktop
           --step windows_paths
         env:
-          SUBST_TARGET: ${{ github.workspace }}/source
+          SUBST_TARGET: "${{ github.workspace }}/source"
 
       - name: Set workdir (Unix)
         if: runner.os != 'Windows'
         env:
-          SUBST_TARGET: ${{ github.workspace }}/source
+          SUBST_TARGET: "${{ github.workspace }}/source"
         run: >-
           cargo run --locked --quiet --manifest-path ${{ github.workspace }}/_ci/tools/ci/Cargo.toml -- build-desktop
           --step set_workdir_unix
@@ -209,8 +209,8 @@ jobs:
       - name: Cache pnpm store
         uses: actions/cache@v4
         with:
-          path: ${{ env.PNPM_STORE_PATH }}
-          key: ${{ runner.os }}-${{ matrix.arch }}-pnpm-store-${{ hashFiles('source/**/pnpm-lock.yaml') }}
+          path: "${{ env.PNPM_STORE_PATH }}"
+          key: "${{ runner.os }}-${{ matrix.arch }}-pnpm-store-${{ hashFiles('source/**/pnpm-lock.yaml') }}"
           restore-keys: |
             ${{ runner.os }}-${{ matrix.arch }}-pnpm-store-
 
@@ -256,7 +256,7 @@ jobs:
       - name: Set up Rust toolchain (Windows)
         if: matrix.platform == 'windows'
         env:
-          ARCH: ${{ matrix.arch }}
+          ARCH: "${{ matrix.arch }}"
         run: >-
           cargo run --locked --quiet --manifest-path ${{ github.workspace }}/_ci/tools/ci/Cargo.toml -- build-desktop
           --step install_rust_windows_targets
@@ -276,7 +276,7 @@ jobs:
       - name: Set build channel
         working-directory: ${{ env.WORKDIR }}/fluxer_desktop
         env:
-          BUILD_CHANNEL: ${{ env.BUILD_CHANNEL }}
+          BUILD_CHANNEL: "${{ env.BUILD_CHANNEL }}"
         run: >-
           cargo run --locked --quiet --manifest-path ${{ github.workspace }}/_ci/tools/ci/Cargo.toml -- build-desktop
           --step set_build_channel
@@ -284,7 +284,7 @@ jobs:
       - name: Build Electron main process
         working-directory: ${{ env.WORKDIR }}/fluxer_desktop
         env:
-          BUILD_CHANNEL: ${{ env.BUILD_CHANNEL }}
+          BUILD_CHANNEL: "${{ env.BUILD_CHANNEL }}"
         run: >-
           cargo run --locked --quiet --manifest-path ${{ github.workspace }}/_ci/tools/ci/Cargo.toml -- build-desktop
           --step build_electron_main
@@ -306,12 +306,12 @@ jobs:
         if: matrix.platform == 'macos'
         working-directory: ${{ env.WORKDIR }}/fluxer_desktop
         env:
-          BUILD_CHANNEL: ${{ env.BUILD_CHANNEL }}
-          CSC_LINK: ${{ secrets.APPLE_CERTIFICATE || '' }}
-          CSC_KEY_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD || '' }}
-          APPLE_ID: ${{ secrets.APPLE_ID || '' }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_PASSWORD || '' }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID || '' }}
+          BUILD_CHANNEL: "${{ env.BUILD_CHANNEL }}"
+          CSC_LINK: "${{ secrets.APPLE_CERTIFICATE || '' }}"
+          CSC_KEY_PASSWORD: "${{ secrets.APPLE_CERTIFICATE_PASSWORD || '' }}"
+          APPLE_ID: "${{ secrets.APPLE_ID || '' }}"
+          APPLE_APP_SPECIFIC_PASSWORD: "${{ secrets.APPLE_PASSWORD || '' }}"
+          APPLE_TEAM_ID: "${{ secrets.APPLE_TEAM_ID || '' }}"
         run: >-
           cargo run --locked --quiet --manifest-path ${{ github.workspace }}/_ci/tools/ci/Cargo.toml -- build-desktop
           --step build_app_macos
@@ -320,7 +320,7 @@ jobs:
         if: matrix.platform == 'macos'
         working-directory: ${{ env.WORKDIR }}/fluxer_desktop
         env:
-          BUILD_CHANNEL: ${{ env.BUILD_CHANNEL }}
+          BUILD_CHANNEL: "${{ env.BUILD_CHANNEL }}"
         run: >-
           cargo run --locked --quiet --manifest-path ${{ github.workspace }}/_ci/tools/ci/Cargo.toml -- build-desktop
           --step verify_bundle_id
@@ -329,7 +329,7 @@ jobs:
         if: matrix.platform == 'windows'
         working-directory: ${{ env.WORKDIR }}/fluxer_desktop
         env:
-          BUILD_CHANNEL: ${{ env.BUILD_CHANNEL }}
+          BUILD_CHANNEL: "${{ env.BUILD_CHANNEL }}"
           TEMP: C:\t
           TMP: C:\t
           ELECTRON_BUILDER_CACHE: C:\ebcache
@@ -341,7 +341,7 @@ jobs:
         if: matrix.platform == 'windows'
         working-directory: ${{ env.WORKDIR }}/fluxer_desktop
         env:
-          BUILD_CHANNEL: ${{ env.BUILD_CHANNEL }}
+          BUILD_CHANNEL: "${{ env.BUILD_CHANNEL }}"
         run: >-
           cargo run --locked --quiet --manifest-path ${{ github.workspace }}/_ci/tools/ci/Cargo.toml -- build-desktop
           --step package_app_windows_velopack
@@ -350,8 +350,8 @@ jobs:
         if: matrix.platform == 'windows'
         working-directory: ${{ env.WORKDIR }}/fluxer_desktop
         env:
-          BUILD_VERSION: ${{ env.VERSION }}
-          BUILD_CHANNEL: ${{ env.BUILD_CHANNEL }}
+          BUILD_VERSION: "${{ env.VERSION }}"
+          BUILD_CHANNEL: "${{ env.BUILD_CHANNEL }}"
           MAX_WINDOWS_PATH_LEN: 260
           PATH_HEADROOM: 10
         run: >-
@@ -362,7 +362,7 @@ jobs:
         if: matrix.platform == 'linux'
         working-directory: ${{ env.WORKDIR }}/fluxer_desktop
         env:
-          BUILD_CHANNEL: ${{ env.BUILD_CHANNEL }}
+          BUILD_CHANNEL: "${{ env.BUILD_CHANNEL }}"
           USE_SYSTEM_FPM: true
         run: >-
           cargo run --locked --quiet --manifest-path ${{ github.workspace }}/_ci/tools/ci/Cargo.toml -- build-desktop
@@ -372,12 +372,11 @@ jobs:
         if: matrix.platform == 'windows'
         working-directory: ${{ env.WORKDIR }}/fluxer_desktop
         env:
-          BUILD_CHANNEL: ${{ env.BUILD_CHANNEL }}
+          BUILD_CHANNEL: "${{ env.BUILD_CHANNEL }}"
         run: >-
           cargo run --locked --quiet --manifest-path ${{ github.workspace }}/_ci/tools/ci/Cargo.toml -- build-desktop
           --step create_portable_zip_windows
 
-      # === ЖЕЛЕЗОБЕТОННОЕ СОХРАНЕНИЕ АРТЕФАКТОВ (РАБОТАЕТ ДАЖЕ ЕСЛИ СЛЕДУЮЩИЕ ШАГИ ПАДАЮТ) ===
       - name: Save Windows Artifacts
         if: always() && matrix.platform == 'windows'
         uses: actions/upload-artifact@v4
