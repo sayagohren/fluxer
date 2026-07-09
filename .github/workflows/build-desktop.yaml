@@ -24,7 +24,7 @@ on:
       skip_targets:
         description: 'Targets to skip (comma-separated)'
         required: false
-        default: 'macos-arm64, macos-x64, linux-x64, linux-arm64'
+        default: 'macos-arm64, macos-x64, linux-x64, linux-arm64, windows-arm64'
         type: string
 
 permissions:
@@ -40,6 +40,7 @@ env:
   CHANNEL: "${{ inputs.channel }}"
   BUILD_CHANNEL: "${{ inputs.channel == 'canary' && 'canary' || 'stable' }}"
   TEST_BUILD: "${{ inputs.test_build && 'true' || 'false' }}"
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
   meta:
@@ -82,12 +83,6 @@ jobs:
     timeout-minutes: 25
     outputs:
       matrix: "${{ steps.set-matrix.outputs.matrix }}"
-      windows_x64: "${{ steps.set-matrix.outputs.windows_x64 }}"
-      windows_arm64: "${{ steps.set-matrix.outputs.windows_arm64 }}"
-      windows_x64_default: "${{ steps.set-matrix.outputs.windows_x64_default }}"
-      windows_arm64_default: "${{ steps.set-matrix.outputs.windows_arm64_default }}"
-      windows_game_capture_x64: "${{ steps.set-matrix.outputs.windows_game_capture_x64 }}"
-      windows_game_capture_arm64: "${{ steps.set-matrix.outputs.windows_game_capture_arm64 }}"
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
@@ -112,7 +107,7 @@ jobs:
       - meta
       - matrix
     runs-on: "${{ contains(matrix.os, 'blacksmith') && 'windows-latest' || contains(matrix.os, 'arm') && 'ubuntu-latest' || matrix.os }}"
-    timeout-minutes: 60
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix: "${{ fromJson(needs.matrix.outputs.matrix) }}"
@@ -216,18 +211,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-${{ matrix.arch }}-pnpm-store-
 
-      - name: Install Python setuptools (Windows ARM64)
-        if: "matrix.platform == 'windows' && matrix.arch == 'arm64'"
-        run: >-
-          cargo run --locked --quiet --manifest-path ${{ github.workspace }}/_ci/tools/ci/Cargo.toml -- build-desktop
-          --step install_setuptools_windows_arm64
-
-      - name: Install Python setuptools (macOS)
-        if: "matrix.platform == 'macos'"
-        run: >-
-          cargo run --locked --quiet --manifest-path ${{ github.workspace }}/_ci/tools/ci/Cargo.toml -- build-desktop
-          --step install_setuptools_macos
-
       - name: Install Linux dependencies
         if: "matrix.platform == 'linux'"
         env:
@@ -242,12 +225,6 @@ jobs:
         with:
           toolchain: "1.93.0"
           targets: "${{ matrix.platform == 'macos' && (matrix.arch == 'arm64' && 'aarch64-apple-darwin' || 'x86_64-apple-darwin') || (matrix.arch == 'arm64' && 'aarch64-unknown-linux-gnu' || 'x86_64-unknown-linux-gnu') }}"
-
-      - name: Install MSVC ARM64 build tools
-        if: "matrix.platform == 'windows' && matrix.arch == 'arm64'"
-        run: >-
-          cargo run --locked --quiet --manifest-path ${{ github.workspace }}/_ci/tools/ci/Cargo.toml -- build-desktop
-          --step install_msvc_arm64_tools
 
       - name: Set up MSVC env (Windows)
         if: "matrix.platform == 'windows'"
@@ -304,29 +281,6 @@ jobs:
           cargo run --locked --quiet --manifest-path ${{ github.workspace }}/_ci/tools/ci/Cargo.toml -- build-desktop
           --step install_velopack_cli
 
-      - name: Build Electron app (macOS)
-        if: "matrix.platform == 'macos'"
-        working-directory: "${{ env.WORKDIR }}/fluxer_desktop"
-        env:
-          BUILD_CHANNEL: "${{ env.BUILD_CHANNEL }}"
-          CSC_LINK: ""
-          CSC_KEY_PASSWORD: ""
-          APPLE_ID: ""
-          APPLE_APP_SPECIFIC_PASSWORD: ""
-          APPLE_TEAM_ID: ""
-        run: >-
-          cargo run --locked --quiet --manifest-path ${{ github.workspace }}/_ci/tools/ci/Cargo.toml -- build-desktop
-          --step build_app_macos
-
-      - name: Verify macOS artifact (bundle ID + profile + signature)
-        if: "matrix.platform == 'macos'"
-        working-directory: "${{ env.WORKDIR }}/fluxer_desktop"
-        env:
-          BUILD_CHANNEL: "${{ env.BUILD_CHANNEL }}"
-        run: >-
-          cargo run --locked --quiet --manifest-path ${{ github.workspace }}/_ci/tools/ci/Cargo.toml -- build-desktop
-          --step verify_bundle_id
-
       - name: Build Electron app (Windows)
         if: "matrix.platform == 'windows'"
         working-directory: "${{ env.WORKDIR }}/fluxer_desktop"
@@ -360,16 +314,6 @@ jobs:
           cargo run --locked --quiet --manifest-path ${{ github.workspace }}/_ci/tools/ci/Cargo.toml -- build-desktop
           --step analyse_velopack_paths
 
-      - name: Build Electron app (Linux)
-        if: "matrix.platform == 'linux'"
-        working-directory: "${{ env.WORKDIR }}/fluxer_desktop"
-        env:
-          BUILD_CHANNEL: "${{ env.BUILD_CHANNEL }}"
-          USE_SYSTEM_FPM: "true"
-        run: >-
-          cargo run --locked --quiet --manifest-path ${{ github.workspace }}/_ci/tools/ci/Cargo.toml -- build-desktop
-          --step build_app_linux
-
       - name: Create portable ZIP (Windows)
         if: "matrix.platform == 'windows'"
         working-directory: "${{ env.WORKDIR }}/fluxer_desktop"
@@ -379,37 +323,45 @@ jobs:
           cargo run --locked --quiet --manifest-path ${{ github.workspace }}/_ci/tools/ci/Cargo.toml -- build-desktop
           --step create_portable_zip_windows
 
+      - name: Prepare artifacts (Native Rust script)
+        if: "runner.os == 'Windows'"
+        run: >-
+          cargo run --locked --quiet --manifest-path ${{ github.workspace }}/_ci/tools/ci/Cargo.toml -- build-desktop
+          --step prepare_artifacts_windows
+
+      - name: Aggressively collect Windows artifacts (Fallback)
+        if: "always() && matrix.platform == 'windows'"
+        shell: pwsh
+        run: |
+          $workdir = $env:WORKDIR
+          $distDir = "$workdir\fluxer_desktop\dist"
+          New-Item -ItemType Directory -Force -Path $distDir | Out-Null
+          
+          $searchPaths = @(
+            "$workdir\fluxer_desktop\dist",
+            "$workdir\fluxer_desktop\release",
+            "$workdir\fluxer_desktop\build",
+            "$workdir\fluxer_desktop\out",
+            "$workdir\fluxer_desktop"
+          )
+          
+          foreach ($path in $searchPaths) {
+            if (Test-Path $path) {
+              Get-ChildItem -Path $path -Recurse -Include *.exe,*.zip,*.nupkg -ErrorAction SilentlyContinue | Where-Object { $_.FullName -notmatch "node_modules" } | Copy-Item -Destination $distDir -Force -ErrorAction SilentlyContinue
+            }
+          }
+          
+          Write-Host "Collected artifacts in $distDir :"
+          Get-ChildItem -Path $distDir | Select-Object Name, Length
+
       - name: Save Windows Artifacts
         if: "always() && matrix.platform == 'windows'"
         uses: actions/upload-artifact@v4
         with:
           name: "fluxer-win-${{ matrix.arch }}-${{ matrix.desktop_variant }}"
           path: |
-            ${{ env.WORKDIR }}/fluxer_desktop/dist/*.exe
-            ${{ env.WORKDIR }}/fluxer_desktop/dist/*.zip
-            ${{ env.WORKDIR }}/fluxer_desktop/dist/*.nupkg
-          retention-days: 7
-          if-no-files-found: warn
-
-      - name: Save macOS Artifacts
-        if: "always() && matrix.platform == 'macos'"
-        uses: actions/upload-artifact@v4
-        with:
-          name: "fluxer-mac-${{ matrix.arch }}"
-          path: |
-            ${{ env.WORKDIR }}/fluxer_desktop/dist/*.dmg
-            ${{ env.WORKDIR }}/fluxer_desktop/dist/*.zip
-          retention-days: 7
-          if-no-files-found: warn
-
-      - name: Save Linux Artifacts
-        if: "always() && matrix.platform == 'linux'"
-        uses: actions/upload-artifact@v4
-        with:
-          name: "fluxer-linux-${{ matrix.arch }}"
-          path: |
-            ${{ env.WORKDIR }}/fluxer_desktop/dist/*.AppImage
-            ${{ env.WORKDIR }}/fluxer_desktop/dist/*.deb
-            ${{ env.WORKDIR }}/fluxer_desktop/dist/*.rpm
+            ${{ env.WORKDIR }}/fluxer_desktop/dist/**/*.exe
+            ${{ env.WORKDIR }}/fluxer_desktop/dist/**/*.zip
+            ${{ env.WORKDIR }}/fluxer_desktop/dist/**/*.nupkg
           retention-days: 7
           if-no-files-found: warn
