@@ -1,0 +1,44 @@
+name: Build Fluxer Desktop
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    defaults:
+      run:
+        working-directory: fluxer_desktop
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 8
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build Windows App
+        env:
+          VITE_API_URL: https://voice.sayago.ru
+          VITE_GATEWAY_URL: wss://voice.sayago.ru
+          VITE_WEB_URL: https://voice.sayago.ru
+        run: pnpm run build:win
+
+      - name: Upload Installer Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Fluxer-Desktop-Windows
+          path: |
+            fluxer_desktop/dist/*.exe
+            fluxer_desktop/release/*.exe
